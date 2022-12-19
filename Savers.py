@@ -1,5 +1,7 @@
-import pandas as pd
 import yaml
+import json
+import xlsxwriter
+import csv
 
 
 class Writer:
@@ -7,7 +9,7 @@ class Writer:
         print(f'Initialization of {param} writer')
 
     def WriteData(self, outputFile):
-        print('Write data from Interface class')
+        print(f'Write data to {outputFile} file')
 
 
 class YamlWriter(Writer):
@@ -16,8 +18,12 @@ class YamlWriter(Writer):
         self.__data = data
 
     def WriteData(self, outputFile):
+        super().WriteData(outputFile + '.yaml')
+        data = []
+        for line in self.__data:
+            data.append(line.GetData())
         with open(outputFile + '.yaml', 'w') as file:
-            yaml.dump(self.__data, file)
+            yaml.dump(data, file)
 
 
 class TxtWriter(Writer):
@@ -26,41 +32,69 @@ class TxtWriter(Writer):
         self.__data = data
 
     def WriteData(self, outputFile):
+        super().WriteData(outputFile + '.txt')
         with open(outputFile + '.txt', 'w') as file:
             for line in self.__data:
-                file.write('[')
-                s = ''
-                for elem in line:
-                    s += str(elem) + ' '
-                s = s.strip()
-                file.write(s + ']\n')
+                file.write('[' + ', '.join(map(str, line.GetData())) + ']\n')
 
 
 class JsonWriter(Writer):
     def __init__(self, data):
         super().__init__('json')
-        self.__data = pd.DataFrame(data)
+        self.__data = data
 
     def WriteData(self, outputFile):
-        self.__data.to_json(outputFile + '.json')
+        super().WriteData(outputFile + '.json')
+        data = []
+        for i in range(len(self.__data)):
+            x = self.__data[i].GetData()
+            date = x[0].isoformat().split('-')
+            date.reverse()
+            x[0] = '.'.join(date)
+            data.append(json.dumps({i: x}))
+        data = ', '.join(data)
+        with open(outputFile + '.json', 'w') as file:
+            file.write(data)
 
 
 class XlsxWriter(Writer):
     def __init__(self, data):
         super().__init__('xlsx')
-        self.__data = pd.DataFrame(data)
+        self.__data = data
 
     def WriteData(self, outputFile):
-        self.__data.to_excel(outputFile + '.xlsx')
+        super().WriteData(outputFile + '.xlsx')
+        data = []
+        for i in range(len(self.__data)):
+            x = self.__data[i].GetData()
+            date = x[0].isoformat().split('-')
+            date.reverse()
+            x[0] = '.'.join(date)
+            data.append(x)
+        workbook = xlsxwriter.Workbook(outputFile + '.xlsx')
+        worksheet = workbook.add_worksheet()
+        for i in range(len(self.__data)):
+            worksheet.write_row(i, 0, data[i])
+        workbook.close()
 
 
 class CsvWriter(Writer):
     def __init__(self, data):
         super().__init__('csv')
-        self.__data = pd.DataFrame(data)
+        self.__data = data
 
     def WriteData(self, outputFile):
-        self.__data.to_csv(outputFile + '.csv')
+        super().WriteData(outputFile + '.csv')
+        data = []
+        for i in range(len(self.__data)):
+            x = self.__data[i].GetData()
+            date = x[0].isoformat().split('-')
+            date.reverse()
+            x[0] = '.'.join(date)
+            data.append(x)
+        with open(outputFile + '.csv', 'w') as file:
+            writer = csv.writer(file, delimiter=';')
+            writer.writerows(data)
 
 
 def SaveData(data, outputFile, formatFile):

@@ -1,8 +1,26 @@
+from RowFromTable import RowFromTable
+from datetime import date as dtDate
 from datetime import datetime
 from bs4 import BeautifulSoup
-import pandas as pd
 import requests
 import argparse
+
+
+class URLBuilder:
+    def __init__(self, currency, startDate):
+        currencyDict = {'usd': '1235', 'eur': '1239'}
+        currency = currency if currency.isdigit() else currencyDict[currency.lower()]
+        currentDate = datetime.now()
+        currentDate = f'{currentDate.day}.{currentDate.month}.{currentDate.year}'
+        self.__url = 'https://www.cbr.ru/currency_base/dynamics/'
+        self.__url += '?UniDbQuery.Posted=True&UniDbQuery.so=1&UniDbQuery.mode=1'
+        self.__url += '&UniDbQuery.date_req1=&UniDbQuery.date_req2=&UniDbQuery.VAL_NM_RQ=R0'
+        self.__url += currency
+        self.__url += '&UniDbQuery.From=' + startDate
+        self.__url += '&UniDbQuery.To=' + currentDate
+
+    def GetURL(self):
+        return self.__url
 
 
 def ArgParser():
@@ -17,18 +35,9 @@ def ArgParser():
 
 def Parse(startDate, currency):
     print('Start of parsing')
-    currencyDict = {'usd': '1235', 'eur': '1239'}
-    currency = currency if currency.isdigit() else currencyDict[currency.lower()]
-    currentDate = datetime.now()
-    currentDate = f'{currentDate.day}.{currentDate.month}.{currentDate.year}'
     try:
-        url = 'https://www.cbr.ru/currency_base/dynamics/?UniDbQuery.Posted=True&UniDbQuery.so=1&UniDbQuery.mode=1'
-        url += '&UniDbQuery.date_req1=&UniDbQuery.date_req2=&UniDbQuery.VAL_NM_RQ=R0'
-        url += currency
-        url += '&UniDbQuery.From=' + startDate
-        url += '&UniDbQuery.To=' + currentDate
-
-        page = requests.get(url)
+        urlBuilder = URLBuilder(currency, startDate)
+        page = requests.get(urlBuilder.GetURL())
         bs = BeautifulSoup(page.text, "lxml")
         table = bs.find('table', 'data')
 
@@ -40,19 +49,21 @@ def Parse(startDate, currency):
         clearRows = []
         for row in rows:
             try:
-                x = pd.to_datetime(row.get_text(), dayfirst=True)
+                date = row.get_text().split('.')
+                date.reverse()
+                dtDate.fromisoformat('-'.join(date))
                 clearRows.append(row)
                 continue
             except Exception:
                 pass
             try:
-                x = int(row.get_text())
+                int(row.get_text())
                 clearRows.append(row)
                 continue
             except Exception:
                 pass
             try:
-                x = float(row.get_text().replace(',', '.'))
+                float(row.get_text().replace(',', '.'))
                 clearRows.append(row)
                 continue
             except Exception:
@@ -61,9 +72,7 @@ def Parse(startDate, currency):
         print('\tCleaning table completed successfully')
 
         for i in range(-1, -len(rows), -3):
-            data.append([pd.to_datetime(rows[i - 2].get_text(), dayfirst=True),
-                         int(rows[i - 1].get_text()),
-                         float(rows[i].get_text().replace(',', '.'))])
+            data.append(RowFromTable(rows[i-2], rows[i-1], rows[i]))
     except Exception:
         print("Failed to parse site")
         exit()
