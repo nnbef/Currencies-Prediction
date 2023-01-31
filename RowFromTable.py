@@ -9,5 +9,5 @@ class RowFromTable:
         self.__count = int(count.get_text())
         self.__curs = float(curs.get_text().replace(',', '.'))
 
-    def GetData(self):
+    def get_data(self):
         return [self.__date, self.__count, self.__curs]

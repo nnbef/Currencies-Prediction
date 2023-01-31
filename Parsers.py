@@ -1,5 +1,5 @@
 from RowFromTable import RowFromTable
-from datetime import date as dtDate
+from datetime import date as dtdate
 from datetime import datetime
 from bs4 import BeautifulSoup
 import requests
@@ -7,37 +7,39 @@ import argparse
 
 
 class URLBuilder:
-    def __init__(self, currency, startDate):
-        currencyDict = {'usd': '1235', 'eur': '1239'}
-        currency = currency if currency.isdigit() else currencyDict[currency.lower()]
-        currentDate = datetime.now()
-        currentDate = f'{currentDate.day}.{currentDate.month}.{currentDate.year}'
+    def __init__(self, currency, start_date):
+        currency_dict = {'usd': '1235', 'eur': '1239'}
+        currency = currency if currency.isdigit() else currency_dict[currency.lower()]
+        current_date = datetime.now()
+        current_date = f'{current_date.day}.{current_date.month}.{current_date.year}'
         self.__url = 'https://www.cbr.ru/currency_base/dynamics/'
         self.__url += '?UniDbQuery.Posted=True&UniDbQuery.so=1&UniDbQuery.mode=1'
         self.__url += '&UniDbQuery.date_req1=&UniDbQuery.date_req2=&UniDbQuery.VAL_NM_RQ=R0'
         self.__url += currency
-        self.__url += '&UniDbQuery.From=' + startDate
-        self.__url += '&UniDbQuery.To=' + currentDate
+        self.__url += '&UniDbQuery.From=' + start_date
+        self.__url += '&UniDbQuery.To=' + current_date
 
-    def GetURL(self):
+    def get_url(self):
         return self.__url
 
 
-def ArgParser():
+def arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--startDate', default='01.01.2005')
     parser.add_argument('--currency', default='USD')
-    parser.add_argument('--outputFile',
+    parser.add_argument('--fileName',
                         default=f'ParseFile {datetime.now().day}.{datetime.now().month}.{datetime.now().year}')
     parser.add_argument('--format', default='csv')
+    parser.add_argument('--useFile', default=False)
+    parser.add_argument('--split', default=0.8)
     return parser
 
 
-def Parse(startDate, currency):
+def parse(start_date, currency):
     print('Start of parsing')
     try:
-        urlBuilder = URLBuilder(currency, startDate)
-        page = requests.get(urlBuilder.GetURL())
+        url_builder = URLBuilder(currency, start_date)
+        page = requests.get(url_builder.get_url())
         bs = BeautifulSoup(page.text, "lxml")
         table = bs.find('table', 'data')
 
@@ -46,29 +48,29 @@ def Parse(startDate, currency):
         rows = table.find_all('td')
 
         print('\tStart cleaning table')
-        clearRows = []
+        clear_rows = []
         for row in rows:
             try:
                 date = row.get_text().split('.')
                 date.reverse()
-                dtDate.fromisoformat('-'.join(date))
-                clearRows.append(row)
+                dtdate.fromisoformat('-'.join(date))
+                clear_rows.append(row)
                 continue
             except Exception:
                 pass
             try:
                 int(row.get_text())
-                clearRows.append(row)
+                clear_rows.append(row)
                 continue
             except Exception:
                 pass
             try:
                 float(row.get_text().replace(',', '.'))
-                clearRows.append(row)
+                clear_rows.append(row)
                 continue
             except Exception:
                 pass
-        rows = clearRows
+        rows = clear_rows
         print('\tCleaning table completed successfully')
 
         for i in range(-1, -len(rows), -3):
